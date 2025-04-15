@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Nodo<T> {
+
     private T id;
     private Map<T, Nodo<T>> conexionesEntrantes;
     private Map<T, Nodo<T>> conexionesSalientes;

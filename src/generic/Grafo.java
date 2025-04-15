@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Collection;
 
 public class Grafo<T> {
+
     private Map<T, Nodo<T>> nodos;
 
     public Grafo() {
