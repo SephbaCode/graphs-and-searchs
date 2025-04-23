@@ -82,11 +82,62 @@ public class GrafoPonderado extends Grafo<String> {
         }
     }
 
+    public void cargarGrafo500DesdeCSV(String rutaAristas) {
+        // Limpiar grafo actual
+        this.limpiar();
+
+        try {
+            // Cargar aristas (creando nodos automáticamente)
+            BufferedReader brAristas = new BufferedReader(new FileReader(rutaAristas));
+            String linea;
+            boolean esPrimera = true;
+
+            while ((linea = brAristas.readLine()) != null) {
+                if (esPrimera) { // Saltar cabecera
+                    esPrimera = false;
+                    continue;
+                }
+                String[] partes = linea.split(",");
+                String origen = partes[0].trim();
+                String destino = partes[1].trim();
+                int peso = Integer.parseInt(partes[2].trim());
+                int destEuris = Integer.parseInt(partes[3].trim());
+
+                // Crear nodo origen si no existe
+                if (this.obtenerNodo(origen) == null) {
+                    NodoPonderado nodoOrigen = new NodoPonderado(origen, 0);  // Asignar heurística 0 por defecto
+                    this.agregarNodo(nodoOrigen);
+                }
+
+                // Crear nodo destino si no existe
+                if (this.obtenerNodo(destino) == null) {
+                    NodoPonderado nodoDestino = new NodoPonderado(destino, destEuris);
+                    this.agregarNodo(nodoDestino);
+                } else {
+                    // Si ya existe, actualizar heurística destino
+                    NodoPonderado nodoDestino = (NodoPonderado) this.obtenerNodo(destino);
+                    nodoDestino.setHeuristica(destEuris);
+                }
+
+                // Conectar nodos
+                this.conectar(origen, destino, peso);
+            }
+            brAristas.close();
+
+            System.out.println("¡Grafo cargado correctamente!");
+
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo CSV: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.err.println("Error de formato numérico en el archivo CSV: " + e.getMessage());
+        }
+    }
+
+
     public Integer getValorEuristico(String id) {
         NodoPonderado nodo = (NodoPonderado) this.obtenerNodo(id);
         return nodo.getValorEuristico();
     }
-
 
 
     @Override

@@ -1,8 +1,6 @@
 package generic;
 
-import weigth_graph.EstadoCoste;
-import weigth_graph.GrafoPonderado;
-import weigth_graph.NodoPonderado;
+
 
 import java.io.Serializable;
 import java.util.*;
@@ -14,7 +12,6 @@ public class Analizador {
     public static <T> void busquedaAmplitud(Grafo<T> grafo, T estadoInicial, T estadoObjetivo) {
         Queue<Nodo<T>> cola = new LinkedList<>();
         Set<T> visitados = new HashSet<>();
-
         Nodo<T> nodoInicial = grafo.obtenerNodo(estadoInicial);
 
         if (nodoInicial == null) {
@@ -26,6 +23,10 @@ public class Analizador {
         visitados.add(nodoInicial.getId());
 
         int paso = 0;
+        int nodosAnalizados = 0;
+        int maxNodosSimultaneos = 0;
+        long tiempoInicio = System.nanoTime();
+
         System.out.println("🔍 Búsqueda por amplitud" + (estadoObjetivo != null ? " hasta encontrar " + estadoObjetivo : ""));
         System.out.printf("%-6s | %-20s | %-60s\n", "Paso", "Nodo extraído", "Cola actual");
         System.out.println("------------------------------------------------------------------------------------------------------");
@@ -33,10 +34,13 @@ public class Analizador {
 
         while (!cola.isEmpty()) {
             Nodo<T> actual = cola.poll();
+            nodosAnalizados++;
 
             if (estadoObjetivo != null && actual.getId().equals(estadoObjetivo)) {
                 System.out.printf("%-6d | %-20s | %-60s\n", paso, actual.getId(), colaToString(cola));
+                long duracion = System.nanoTime() - tiempoInicio;
                 System.out.println("✅ Nodo objetivo encontrado: " + actual.getId());
+                imprimirMetricas(duracion, nodosAnalizados, maxNodosSimultaneos);
                 return;
             }
 
@@ -47,13 +51,78 @@ public class Analizador {
                 }
             }
 
+            maxNodosSimultaneos = Math.max(maxNodosSimultaneos, cola.size() + 1); // +1 por el nodo actual
             System.out.printf("%-6d | %-20s | %-60s\n", paso++, actual.getId(), colaToString(cola));
         }
 
-        if (estadoObjetivo != null) {
-            System.out.println("❌ Nodo objetivo no encontrado en el grafo.");
-        }
+        long duracion = System.nanoTime() - tiempoInicio;
+        System.out.println("❌ Nodo objetivo no encontrado en el grafo.");
+        imprimirMetricas(duracion, nodosAnalizados, maxNodosSimultaneos);
     }
+
+    private static void imprimirMetricas(long duracionNano, int nodosAnalizados, int maxNodosSimultaneos) {
+        System.out.println("📊 Métricas:");
+        System.out.println("   ⏱ Tiempo total: " + (duracionNano / 1_000_000.0) + " ms");
+        System.out.println("   🧠 Nodos analizados (temporal): " + nodosAnalizados);
+        System.out.println("   📦 Máxima memoria usada (espacial): " + maxNodosSimultaneos + " nodos simultáneos");
+    }
+
+    public static <T> void busquedaProfundidad(Grafo<T> grafo, T estadoInicial, T estadoObjetivo) {
+        Deque<Nodo<T>> pila = new ArrayDeque<>();
+        Set<T> visitados = new HashSet<>();
+
+        Nodo<T> nodoInicial = grafo.obtenerNodo(estadoInicial);
+        if (nodoInicial == null) {
+            System.out.println("❌ El nodo inicial no existe en el grafo.");
+            return;
+        }
+
+        pila.push(nodoInicial);
+        visitados.add(nodoInicial.getId());
+
+        int paso = 0;
+        int nodosAnalizados = 0;
+        int maxNodosSimultaneos = 0;
+        long tiempoInicio = System.nanoTime();
+
+        System.out.println("🔍 Búsqueda por profundidad" + (estadoObjetivo != null ? " hasta encontrar " + estadoObjetivo : ""));
+        System.out.printf("%-6s | %-20s | %-60s\n", "Paso", "Nodo extraído", "Pila actual");
+        System.out.println("------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-6d | %-20s | %-60s\n", paso++, "Ninguno", pilaToString(pila));
+
+        while (!pila.isEmpty()) {
+            Nodo<T> actual = pila.pop();
+            nodosAnalizados++;
+
+            if (estadoObjetivo != null && actual.getId().equals(estadoObjetivo)) {
+                System.out.printf("%-6d | %-20s | %-60s\n", paso, actual.getId(), pilaToString(pila));
+                long duracion = System.nanoTime() - tiempoInicio;
+                System.out.println("✅ Nodo objetivo encontrado: " + actual.getId());
+                imprimirMetricas(duracion, nodosAnalizados, maxNodosSimultaneos);
+                return;
+            }
+
+            // Inversión para mantener orden lógico
+            List<Nodo<T>> vecinos = new ArrayList<>(actual.getConexionesSalientes().values());
+            Collections.reverse(vecinos);
+
+            for (Nodo<T> vecino : vecinos) {
+                if (!visitados.contains(vecino.getId())) {
+                    pila.push(vecino);
+                    visitados.add(vecino.getId());
+                }
+            }
+
+            maxNodosSimultaneos = Math.max(maxNodosSimultaneos, pila.size() + 1); // +1 por el nodo actual
+            System.out.printf("%-6d | %-20s | %-60s\n", paso++, actual.getId(), pilaToString(pila));
+        }
+
+        long duracion = System.nanoTime() - tiempoInicio;
+        System.out.println("❌ Nodo objetivo no encontrado en el grafo.");
+        imprimirMetricas(duracion, nodosAnalizados, maxNodosSimultaneos);
+    }
+
+
 
     private static <T> String colaToString(Queue<Nodo<T>> cola) {
         StringBuilder sb = new StringBuilder();
@@ -74,53 +143,14 @@ public class Analizador {
         return sb.toString().trim();
     }
 
-    public static <T> void busquedaProfundidad(Grafo<T> grafo, T estadoInicial, T estadoObjetivo) {
-        Deque<Nodo<T>> pila = new ArrayDeque<>();
-        Set<T> visitados = new HashSet<>();
-
-        Nodo<T> nodoInicial = grafo.obtenerNodo(estadoInicial);
-
-        if (nodoInicial == null) {
-            System.out.println("❌ El nodo inicial no existe en el grafo.");
-            return;
+    private static <T> String pilaToStringNivel(Deque<NodoNivel<T>> pila) {
+        StringBuilder sb = new StringBuilder();
+        for (NodoNivel<T> nodo : pila) {
+            sb.append(nodo.nodo.getId()).append(" ");
         }
-
-        pila.push(nodoInicial);
-        visitados.add(nodoInicial.getId());
-
-        int paso = 0;
-        System.out.println("🔍 Búsqueda por profundidad" + (estadoObjetivo != null ? " hasta encontrar " + estadoObjetivo : ""));
-        System.out.printf("%-6s | %-20s | %-60s\n", "Paso", "Nodo extraído", "Pila actual");
-        System.out.println("------------------------------------------------------------------------------------------------------");
-        System.out.printf("%-6d | %-20s | %-60s\n", paso++, "Ninguno", pilaToString(pila));
-
-        while (!pila.isEmpty()) {
-            Nodo<T> actual = pila.pop();
-
-            if (estadoObjetivo != null && actual.getId().equals(estadoObjetivo)) {
-                System.out.printf("%-6d | %-20s | %-60s\n", paso, actual.getId(), pilaToString(pila));
-                System.out.println("✅ Nodo objetivo encontrado: " + actual.getId());
-                return;
-            }
-
-            // Agregamos los vecinos en orden inverso para mantener orden lógico
-            List<Nodo<T>> vecinos = new ArrayList<>(actual.getConexionesSalientes().values());
-            Collections.reverse(vecinos);
-
-            for (Nodo<T> vecino : vecinos) {
-                if (!visitados.contains(vecino.getId())) {
-                    pila.push(vecino);
-                    visitados.add(vecino.getId());
-                }
-            }
-
-            System.out.printf("%-6d | %-20s | %-60s\n", paso++, actual.getId(), pilaToString(pila));
-        }
-
-        if (estadoObjetivo != null) {
-            System.out.println("❌ Nodo objetivo no encontrado en el grafo.");
-        }
+        return sb.toString().trim();
     }
+
 
     public static <T> void busquedaBidireccional(Grafo<T> grafo, T estadoInicial, T estadoObjetivo) {
         Set<T> visitadosDesdeInicio = ConcurrentHashMap.newKeySet();
@@ -136,56 +166,90 @@ public class Analizador {
             return;
         }
 
-        Runnable busqueda = (Runnable & Serializable) () -> {
+        class EstadoHilo {
             Queue<Nodo<T>> cola = new LinkedList<>();
-            boolean esInicio = Thread.currentThread().getName().equals("Inicio");
-            Set<T> visitadosLocales = esInicio ? visitadosDesdeInicio : visitadosDesdeObjetivo;
-            Set<T> visitadosContrarios = esInicio ? visitadosDesdeObjetivo : visitadosDesdeInicio;
-            Nodo<T> origen = esInicio ? nodoInicial : nodoFinal;
+            Nodo<T> nodoActual = null;
+            String nombre;
+            Set<T> visitados;
+            int nodosAnalizados = 0;
+            int maxNodosSimultaneos = 0;
 
-            cola.add(origen);
-            visitadosLocales.add(origen.getId());
+            EstadoHilo(String nombre, Nodo<T> origen, Set<T> visitedSet) {
+                this.nombre = nombre;
+                this.visitados = visitedSet;
+                cola.add(origen);
+                visitados.add(origen.getId());
+            }
 
-            while (!cola.isEmpty() && !encontrado.get()) {
-                Nodo<T> actual = cola.poll();
+            boolean paso(Set<T> visitadosContrario) {
+                if (cola.isEmpty()) return false;
+                nodoActual = cola.poll();
+                nodosAnalizados++;
 
-                if (visitadosContrarios.contains(actual.getId())) {
+                if (visitadosContrario.contains(nodoActual.getId())) {
                     synchronized (lock) {
                         if (!encontrado.get()) {
                             encontrado.set(true);
-                            System.out.println("✅ Nodo encontrado por ambas búsquedas: " + actual.getId());
+                            System.out.println("\n✅ Nodo encontrado por ambas búsquedas: " + nodoActual.getId());
                         }
                     }
-                    return;
+                    return false;
                 }
 
-                for (Nodo<T> vecino : actual.getConexionesSalientes().values()) {
-                    if (visitadosLocales.add(vecino.getId())) {
+                for (Nodo<T> vecino : nodoActual.getConexionesSalientes().values()) {
+                    if (visitados.add(vecino.getId())) {
                         cola.add(vecino);
                     }
                 }
 
-                System.out.println("🔎 [" + Thread.currentThread().getName() + "] Visitando: " + actual.getId());
+                maxNodosSimultaneos = Math.max(maxNodosSimultaneos, cola.size() + 1);
+                return true;
             }
-        };
 
-        Thread desdeInicio = new Thread(busqueda, "Inicio");
-        Thread desdeObjetivo = new Thread(busqueda, "Objetivo");
-
-        desdeInicio.start();
-        desdeObjetivo.start();
-
-        try {
-            desdeInicio.join();
-            desdeObjetivo.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            String getColaComoTexto() {
+                return cola.stream().map(Nodo::getId).map(Object::toString).reduce("", (a, b) -> a + " " + b).trim();
+            }
         }
+
+        EstadoHilo inicio = new EstadoHilo("Inicio", nodoInicial, visitadosDesdeInicio);
+        EstadoHilo objetivo = new EstadoHilo("Objetivo", nodoFinal, visitadosDesdeObjetivo);
+
+        long tiempoInicio = System.nanoTime();
+        int paso = 0;
+
+        System.out.printf("\n%-6s | %-22s | %-25s | %-22s | %-25s\n", "Paso", "Nodo extraído (Inicio)", "Cola (Inicio)", "Nodo extraído (Objetivo)", "Cola (Objetivo)");
+        System.out.println("-----------------------------------------------------------------------------------------------------------------------");
+
+        while (!encontrado.get() && (!inicio.cola.isEmpty() || !objetivo.cola.isEmpty())) {
+            boolean pasoInicio = inicio.paso(visitadosDesdeObjetivo);
+            boolean pasoObjetivo = objetivo.paso(visitadosDesdeInicio);
+
+            System.out.printf("%-6d | %-22s | %-25s | %-22s | %-25s\n",
+                    paso++,
+                    pasoInicio ? inicio.nodoActual.getId().toString() : "-",
+                    pasoInicio ? inicio.getColaComoTexto() : "-",
+                    pasoObjetivo ? objetivo.nodoActual.getId().toString() : "-",
+                    pasoObjetivo ? objetivo.getColaComoTexto() : "-"
+            );
+        }
+
+        long duracion = System.nanoTime() - tiempoInicio;
 
         if (!encontrado.get()) {
             System.out.println("❌ No se encontró conexión entre los dos nodos.");
         }
+
+        // Imprimir métricas finales
+        System.out.println("\n📊 Métricas de búsqueda bidireccional:");
+        System.out.printf("⏱ Tiempo total: %.2f ms\n", duracion / 1_000_000.0);
+        System.out.println("🧠 Nodos analizados desde Inicio: " + inicio.nodosAnalizados);
+        System.out.println("🧠 Nodos analizados desde Objetivo: " + objetivo.nodosAnalizados);
+        System.out.println("📦 Máx nodos simultáneos desde Inicio: " + inicio.maxNodosSimultaneos);
+        System.out.println("📦 Máx nodos simultáneos desde Objetivo: " + objetivo.maxNodosSimultaneos);
+        System.out.println("📊 Total nodos analizados: " + (inicio.nodosAnalizados + objetivo.nodosAnalizados));
     }
+
+
 
     public static <T> void busquedaPorNivelesDeProfundidad(Grafo<T> grafo, T estadoInicial, T estadoObjetivo, int profundidadMaxima) {
         Nodo<T> nodoInicial = grafo.obtenerNodo(estadoInicial);
@@ -197,19 +261,75 @@ public class Analizador {
         }
 
         System.out.println("🔎 Búsqueda por niveles de profundidad desde " + estadoInicial + " hasta " + estadoObjetivo);
-
+        System.out.println("👉 Límite de profundidad: " + profundidadMaxima);
 
         Set<T> visitados = new HashSet<>();
-        System.out.println("👉 Nivel de profundidad límite: " + profundidadMaxima);
+        Deque<NodoNivel<T>> pila = new ArrayDeque<>();
+        pila.push(new NodoNivel<>(nodoInicial, 0));
+        visitados.add(nodoInicial.getId());
 
-        if (dfsLimitado(nodoInicial, estadoObjetivo, profundidadMaxima, visitados)) {
-            System.out.println("✅ Nodo objetivo encontrado dentro del límite de profundidad " + profundidadMaxima);
-            return;
+        long tiempoInicio = System.nanoTime();
+        int paso = 0;
+        int maxNodosSimultaneos = 1;
+        int nodosAnalizados = 0;
+
+        System.out.printf("\n%-6s | %-20s | %-12s | %-30s | %-30s\n", "Paso", "Nodo extraído", "Profundidad", "Vecinos agregados", "Pila actual");
+        System.out.println("-----------------------------------------------------------------------------------------------------------------------------");
+
+        while (!pila.isEmpty()) {
+            NodoNivel<T> actual = pila.pop();
+            nodosAnalizados++;
+
+            StringBuilder vecinosAgregados = new StringBuilder();
+
+            if (actual.nodo.getId().equals(estadoObjetivo)) {
+                System.out.printf("%-6d | %-20s | %-12d | %-30s | %-30s\n",
+                        paso++, actual.nodo.getId(), actual.nivel, "-", pilaToStringNivel(pila));
+                System.out.println("✅ Nodo objetivo encontrado: " + actual.nodo.getId());
+                long duracion = System.nanoTime() - tiempoInicio;
+                imprimirMetricas(duracion, nodosAnalizados, maxNodosSimultaneos);
+                return;
+            }
+
+            if (actual.nivel < profundidadMaxima) {
+                List<Nodo<T>> vecinos = new ArrayList<>(actual.nodo.getConexionesSalientes().values());
+                Collections.reverse(vecinos);  // para mantener el orden natural
+
+                for (Nodo<T> vecino : vecinos) {
+                    if (!visitados.contains(vecino.getId())) {
+                        pila.push(new NodoNivel<>(vecino, actual.nivel + 1));
+                        visitados.add(vecino.getId());
+                        vecinosAgregados.append(vecino.getId()).append(" ");
+                    }
+                }
+            }
+
+            maxNodosSimultaneos = Math.max(maxNodosSimultaneos, pila.size() + 1);
+
+            System.out.printf("%-6d | %-20s | %-12d | %-30s | %-30s\n",
+                    paso++, actual.nodo.getId(), actual.nivel, vecinosAgregados.toString().trim(), pilaToStringNivel(pila));
         }
 
-
+        long duracion = System.nanoTime() - tiempoInicio;
         System.out.println("❌ Nodo objetivo no encontrado hasta una profundidad de " + profundidadMaxima);
+        imprimirMetricas(duracion, nodosAnalizados, maxNodosSimultaneos);
     }
+
+    // Clase interna para manejar el nodo con su nivel
+    private static class NodoNivel<T> {
+        Nodo<T> nodo;
+        int nivel;
+
+        NodoNivel(Nodo<T> nodo, int nivel) {
+            this.nodo = nodo;
+            this.nivel = nivel;
+        }
+    }
+
+
+
+
+
 
     private static <T> boolean dfsLimitado(Nodo<T> actual, T objetivo, int limite, Set<T> visitados) {
         System.out.println("🧭 Visitando: " + actual.getId() + " | Profundidad restante: " + limite);
@@ -232,79 +352,7 @@ public class Analizador {
         return false;
     }
 
-    public static <T> void busquedaPorCosteUniforme(GrafoPonderado<T> grafo, T estadoInicial, T estadoFinal) {
-        // Verificar si los nodos de inicio y fin existen en el grafo
-        NodoPonderado<T> nodoInicial = (NodoPonderado<T>) grafo.obtenerNodo(estadoInicial);
-        NodoPonderado<T> nodoFinal = (NodoPonderado<T>) grafo.obtenerNodo(estadoFinal);
 
-        if (nodoInicial == null || nodoFinal == null) {
-            System.out.println("Uno de los nodos (inicial o final) no existe en el grafo.");
-            return;
-        }
-
-        // Cola de prioridad (min-heap) para explorar los nodos por coste acumulado
-        PriorityQueue<EstadoCoste<T>> colaPrioridad = new PriorityQueue<>(Comparator.comparingInt(EstadoCoste::getCoste));
-        Set<T> visitados = new HashSet<>();
-
-        // Añadir el nodo inicial con coste 0
-        colaPrioridad.add(new EstadoCoste<>(nodoInicial, 0));
-
-        // Mapa para almacenar el camino recorrido (de donde venimos) y los costes
-        Map<T, T> caminos = new HashMap<>();
-        Map<T, Integer> costes = new HashMap<>();
-        costes.put(nodoInicial.getId(), 0);
-
-        while (!colaPrioridad.isEmpty()) {
-            EstadoCoste<T> estadoActual = colaPrioridad.poll();
-            T nodoActualId = estadoActual.getNodo().getId();
-
-            // Si ya visitamos este nodo, lo ignoramos
-            if (visitados.contains(nodoActualId)) {
-                continue;
-            }
-
-            // Marcar el nodo como visitado
-            visitados.add(nodoActualId);
-
-            // Si hemos llegado al nodo final, reconstruimos el camino
-            if (nodoActualId.equals(estadoFinal)) {
-                System.out.println("¡Nodo objetivo encontrado!");
-                reconstruirCamino(caminos, estadoInicial, estadoFinal);
-                // Imprimir el coste total
-                System.out.println("Coste total del camino: " + costes.get(estadoFinal));
-                return;
-            }
-
-            // Explorar los nodos adyacentes
-            for (Map.Entry<T, Nodo<T>> entrada : estadoActual.getNodo().getConexionesSalientes().entrySet()) {
-                T vecinoId = entrada.getKey();  // La clave es el ID del nodo vecino
-                Nodo<T> vecino = entrada.getValue();  // El valor es el nodo vecino (de tipo Nodo<T>)
-
-                // Verificar si el vecino no ha sido visitado
-                if (!visitados.contains(vecinoId)) {
-                    // Obtener el coste de la conexión
-                    int costeConexion = estadoActual.getNodo().obtenerPesoConexionSaliente(vecinoId);
-
-                    // Calcular el nuevo coste sumando el coste de la conexión
-                    int nuevoCoste = estadoActual.getCoste() + costeConexion;
-
-                    // Solo actualizar si encontramos un coste menor
-                    if (!costes.containsKey(vecinoId) || nuevoCoste < costes.get(vecinoId)) {
-                        // Agregar a la cola de prioridad el vecino con su coste actualizado
-                        colaPrioridad.add(new EstadoCoste<>((NodoPonderado) vecino, nuevoCoste));
-
-                        // Guardar de dónde venimos (esto es para reconstruir el camino más tarde)
-                        caminos.put(vecinoId, estadoActual.getNodo().getId());
-
-                        // Actualizar el coste del vecino
-                        costes.put(vecinoId, nuevoCoste);
-                    }
-                }
-            }
-        }
-
-        System.out.println("❌ Nodo objetivo no encontrado.");
-    }
 
     // Metodo para reconstruir el camino desde el nodo inicial al final
     private static <T> void reconstruirCamino(Map<T, T> caminos, T estadoInicial, T estadoFinal) {

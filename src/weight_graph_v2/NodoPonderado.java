@@ -26,6 +26,9 @@ public class NodoPonderado extends Nodo<String> {
     public int getValorEuristico() {
         return ValorEuristico;
     }
+    public void setHeuristica(int ValorEuristico) {
+        this.ValorEuristico = ValorEuristico;
+    }
 
     public int getValorConexion(String idDestino) {
         return conexionesValores.getOrDefault(idDestino, -1);
